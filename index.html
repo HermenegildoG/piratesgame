@@ -1,0 +1,177 @@
+<!doctype html> 
+<html lang="en"> 
+<head> 
+    <meta charset="UTF-8" />
+    <title>Pirates Game</title>
+    <link rel="preload" as="font" href="assets/bullpen-3d/Bullpen3D.ttf" type="font/ttf" />
+    <script src="//cdn.jsdelivr.net/npm/phaser@3.11.0/dist/phaser.js"></script>
+    <style type="text/css">
+        body {
+            margin: 0;
+        }
+        @font-face{
+            font-family:Bullpen3D;
+            src: url('assets/bullpen-3d/Bullpen3D.ttf');
+        }
+    </style>
+</head>
+<body>
+
+<script type="text/javascript">
+
+    var config = {
+        type: Phaser.AUTO,
+        width: 800,
+        height: 600,
+        physics: {
+            default: 'arcade',
+            arcade: {
+                gravity: { y: 300 },
+                debug: false
+            }
+        },
+        scene: {
+            preload: preload,
+            create: create,
+            update: update
+        }
+    };
+
+    var pirateGreen;
+    var cursors;
+    var mapa;
+    var stars;
+    var score = 0;
+    var scoreText;
+    var gameOver=false;
+    var game = new Phaser.Game(config);
+    
+    function preload ()
+    {
+        this.load.image('star','assets/extras/star.png');
+        this.load.image('background0','assets/Background/Nature_Background_Layer_00.png');
+        this.load.image('background1','assets/Background/Nature_Background_Layer_01.png');
+        this.load.image('background2','assets/Background/Nature_Background_Layer_02.png');
+        this.load.image('background3','assets/Background/Nature_Background_Layer_03.png');
+        this.load.image('background4','assets/Background/Nature_Background_Layer_04.png');
+        this.load.image('background5','assets/Background/Nature_Foreground_Layer_05.png');
+        this.load.image('background6','assets/Background/Nature_Foreground_Layer_06.png');
+        this.load.spritesheet('pirateGreen','assets/sword_PirateGreen/breathing3.png', { frameWidth: 178, frameHeight: 198 });
+        this.load.spritesheet('pirateGreenRunning','assets/sword_PirateGreen//running3.png', { frameWidth: 229, frameHeight: 198 });
+        this.load.spritesheet('pirateGreenJumping','assets/sword_PirateGreen/jumpingnew5.png', { frameWidth: 238, frameHeight: 240 });
+        this.load.tilemapTiledJSON('mapa1','assets/map/mapa1.json');
+        this.load.image('tiles','assets/map/Nature_TileSet.png');
+    }
+    function create ()
+    {
+        this.physics.world.setBoundsCollision(true,false,true,false);
+        this.add.image(400,300,'background0').setScale(2).setScrollFactor(0);
+        this.bg_1=this.add.tileSprite(400,300,game.config.width,game.config.height,'background1');
+        this.bg_1.setOrigin(0,0);
+        this.bg_1.setScrollFactor(0);
+        this.bg_2=this.add.tileSprite(400,380,game.config.width,game.config.height,'background2');
+        this.bg_2.setScrollFactor(0);
+        this.bg_3=this.add.tileSprite(400,450,game.config.width,game.config.height,'background3');
+        this.bg_3.setScrollFactor(0);
+        this.bg_4=this.add.tileSprite(400,550,game.config.width,game.config.height,'background4');
+        this.bg_4.setScrollFactor(0);
+
+        mapa=this.make.tilemap({key:'mapa1'});
+        var tilesets=mapa.addTilesetImage('Nature_TileSet','tiles');
+        var base= mapa.createDynamicLayer('base',tilesets);        
+        var solidos=mapa.createDynamicLayer('solidos',tilesets);
+        solidos.setCollisionByProperty({solido:true});
+        solidos.setCollisionByExclusion(-1, true);
+
+        pirateGreen = this.physics.add.sprite(100,200,'pirateGreen').setScale(.32);
+        pirateGreen.setCollideWorldBounds(true);
+
+        this.anims.create({
+            key:'breathing',
+            frames:this.anims.generateFrameNumbers('pirateGreen',{start:0 , end:19}),
+            frameRate: 10,
+            yoyo:true,
+            repeat:-1
+        });
+        this.anims.create({
+            key:'jumping',
+            frames:this.anims.generateFrameNumbers('pirateGreenJumping',{start:0 , end:9}),
+            frameRate: 5,
+            repeat:1
+        })
+        this.anims.create({
+            key:'running',
+            frames:this.anims.generateFrameNumbers('pirateGreenRunning',{start:0 , end:15}),
+            frameRate: 13,
+            yoyo:true,
+            repeat:-1
+        })
+
+        this.cameras.main.setBounds(0,0,mapa.widthInPixels,600);
+        this.cameras.main.startFollow(pirateGreen);
+
+        cursors= this.input.keyboard.createCursorKeys();
+
+        stars = this.physics.add.group({
+            key: 'star',
+            repeat: 11,
+            setXY: { x: 12, y: 0, stepX: 70 }
+        });
+        stars.children.iterate(function (child) {
+
+            child.setBounceY(Phaser.Math.FloatBetween(0.4, 0.8));
+
+        });
+        scoreText = this.add.text(16, 16, 'SCORE: 0', { fontFamily: 'Bullpen3D',fontSize: '32px', fill: '#35FF00' }).setScrollFactor(0);
+        this.physics.add.collider(pirateGreen,solidos);
+        this.physics.add.collider(stars, solidos);
+        this.physics.add.overlap(pirateGreen, stars, collectStar, null, this);
+        
+    }
+
+    function update ()
+    {
+        this.bg_1.tilePositionX=this.cameras.main.scrollX * .3;
+        this.bg_2.tilePositionX=this.cameras.main.scrollX * .5;
+        this.bg_3.tilePositionX=this.cameras.main.scrollX * .8;
+        this.bg_4.tilePositionX=this.cameras.main.scrollX * 1.4;
+
+        if(cursors.left.isDown){
+            pirateGreen.flipX=false;
+            pirateGreen.setVelocityX(-150);
+            pirateGreen.anims.play('running',true);
+        }
+        else if(cursors.right.isDown)
+        {
+            pirateGreen.flipX=true;
+            pirateGreen.setVelocityX(150);
+            pirateGreen.anims.play('running',true);
+        }else if(cursors.up.isDown && pirateGreen.body.onFloor())
+        {
+            pirateGreen.anims.play('jumping',true);
+            pirateGreen.body.setVelocityY(-300);
+        }else if(cursors.down.isDown){
+            pirateGreen.setVelocityY(350);
+        }
+        else if(pirateGreen.body.onFloor()){
+            pirateGreen.body.setVelocityX(0);
+            pirateGreen.anims.play('breathing',true);
+        }
+
+        if(pirateGreen.body.position.y>600){
+            //pirateGreen.setTint(0xff0000);
+            gameOver=true;
+            this.scene.restart();
+        }
+    }
+    function collectStar (pirateGreen, star)
+    {
+        star.disableBody(true, true);
+        score += 10;
+        scoreText.setText('Score: ' + score);
+    }
+    
+</script>
+
+</body>
+</html>
